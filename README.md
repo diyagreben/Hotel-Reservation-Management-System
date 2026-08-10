@@ -1,4 +1,4 @@
-Hotel Reservation Management System
+# Hotel Reservation Management System
 
 A Java command-line application for hotel staff to search room availability, manage reservations, check guests in and out, and maintain the room inventory.
 
