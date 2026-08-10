@@ -7,6 +7,7 @@ public class HotelManagementSystem {
     private final List<Room> rooms = new ArrayList<>();
     private final List<Guest> guests = new ArrayList<>();
     private final List<Reservation> reservations = new ArrayList<>();
+    private final ReservationStorage storage = new ReservationStorage();
 
     private int nextReservationId = 1;
 
@@ -21,7 +22,7 @@ public class HotelManagementSystem {
     public void removeRoom(String roomNumber) {
         Room room = requireRoom(roomNumber);
         boolean hasReservations = reservations.stream()
-                .anyMatch(reservation -> reservation.getRoom() == room && reservation.getStatus() == ReservationStatus.ACTIVE);
+                .anyMatch(reservation -> reservation.getRoom() == room && isActive(reservation.getStatus()));
         if (hasReservations) {
             throw new IllegalStateException("Cannot remove room with active reservations.");
         }
@@ -39,7 +40,7 @@ public class HotelManagementSystem {
                 .orElse(null);
     }
 
-    public list<Room> getAllRooms(){
+    public List<Room> getAllRooms(){
         return new ArrayList<>(rooms);
     }
 
@@ -47,10 +48,10 @@ public class HotelManagementSystem {
     public Guest findOrCreateGuest(String guestId, String name, String phone, String email) {
         Guest exists = findGuest(guestId);
         if (exists != null) {
-            return exists;  est = new Guest(guestId, name, phone, email);
-                        
-                        
-        guests.add(guest)
+            return exists;
+        }  
+        Guest guest = new Guest(guestId, name, phone, email);              
+        guests.add(guest);
         return guest;
     }
 
@@ -80,13 +81,21 @@ public class HotelManagementSystem {
         if (room.getStatus() != Room.RoomStatus.AVAILABLE) {
             throw new IllegalStateException("Room is not available for reservation.");
         }
-        if (!isRoomFree(room, checkIn, checkOut)) {
+        if (!isRoomAvailable(room, checkIn, checkOut)) {
             throw new IllegalStateException("Room is already booked for the selected dates.");
         }
         String id = String.format("R%04d", nextReservationId++);
         Reservation reservation = new Reservation(id, room, guest, checkIn, checkOut);
         reservations.add(reservation);
         return reservation;
+    }
+
+    private Room requireRoom(String roomNumber) {
+        Room room = findRoom(roomNumber);
+        if (room == null) {
+            throw new IllegalArgumentException("Room " + roomNumber + " does not exist.");
+        }
+        return room;
     }
 
     //cancel reservation, check in, check out
@@ -124,11 +133,13 @@ public class HotelManagementSystem {
         return new ArrayList<>(reservations);
     }
 
-    public List,Reservation> getReservationHistoryForGuest(String guestId) {
+    public List<Reservation> getReservationHistoryForGuest(String guestId) {
         return reservations.stream()
                 .filter(reservation -> reservation.getGuest().getGuestId().equalsIgnoreCase(guestId))
                 .toList();
             
+
+    }
 
     //Persistence methods
 
@@ -137,13 +148,13 @@ public class HotelManagementSystem {
         rooms.clear();
         rooms.addAll(data.rooms());
         guests.clear();
-        guests.addAll(data.guests()); ions.clear();
+        guests.addAll(data.guests()); reservations.clear();
         reservations.addAll(data.reservations());
                         
                 
 
-        nextreservationId = reservations.stream()
-                .mapToInt(reservation -> numericsuffix(reservation.getReservationId()))
+        nextReservationId = reservations.stream()
+                .mapToInt(reservation -> numericSuffix(reservation.getReservationId()))
                 .max()
                 .orElse(0) + 1;
         
@@ -166,9 +177,8 @@ public class HotelManagementSystem {
     private boolean isRoomAvailable(Room room, LocalDate checkIn, LocalDate checkOut) {
         return reservations.stream()
                 .filter(reservation -> reservation.getRoom() == room && isActive(reservation.getStatus()))
-                .noneMatch(reservation -> datesOverlap(checkIn, checkOut, reservation.getCheckIn(), reservation.getCheckOut()));
+                .noneMatch(reservation -> reservation.overlaps(checkIn, checkOut));
     }
-
     private Reservation requireReservation(String reservationId) {
         Reservation reservation = findReservation(reservationId);
         if (reservation == null) {
@@ -188,15 +198,4 @@ public class HotelManagementSystem {
             throw new IllegalArgumentException("Check-out date must be after check-in date.");
         }
     }
-} 
-                            
-                    
-             
-                        
-                
-                    
-                    
-                    
-                    
-                    
-                    
+}   
